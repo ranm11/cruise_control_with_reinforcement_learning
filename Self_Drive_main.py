@@ -12,7 +12,9 @@ import matplotlib.pyplot as plt
 from lane_gym import CarLaneTrackingEnv
 from replay_buffer import Buffer
 from DDPG_network import DDPG_network
-env = CarLaneTrackingEnv()
+enable_lane_curvature = True
+speed_update_enable = False
+env = CarLaneTrackingEnv(enable_lane_curvature)
 
 num_states = env.observation_space.shape[0]
 print("Size of State Space ->  {}".format(num_states))
@@ -50,6 +52,10 @@ for ep in range(total_episodes):
         action = ddpg.policy(tf_prev_state)
         state, reward, done, _ = env.step(action)
         env.render()
+        if(speed_update_enable):
+            current_speed = state[2]*env.speedNormalizeFactor
+            updated_speed = (current_speed + 0.1) if current_speed < 27 else 28
+            env.SpeedUpdate(updated_speed)
         buffer.record((prev_state, action, reward, state))
         episodic_reward += reward
         #get mini batch K 

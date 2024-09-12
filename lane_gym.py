@@ -6,7 +6,7 @@ import matplotlib.patches as patches
 from matplotlib.transforms import Affine2D
 
 class CarLaneTrackingEnv(gym.Env):
-    def __init__(self):
+    def __init__(self, enable_lane_curvature = False):
         super(CarLaneTrackingEnv, self).__init__()
         
         # Action space: Wheel range [-1, 1] where -1 is full left and 1 is full right
@@ -25,11 +25,13 @@ class CarLaneTrackingEnv(gym.Env):
         self.wheel_range = 0
         # Matplotlib setup
         self.fig, self.ax = plt.subplots()
-        self.lane_width = 2.0  # Lane width in meters
-        self.car_length = 1.0  # Car length in meters
-        self.car_width = 0.5  # Car width in meters
+        self.lane_width = 5.0  # Lane width in meters
+        self.car_length = 2.5  # Car length in meters
+        self.car_width = 1.5  # Car width in meters
         self.plot_initialized = False
-        
+        self.enable_lane_curvature = enable_lane_curvature
+        self.speedNormalizeFactor = 20
+
     def reset(self):
         # Reset the state to initial conditions
         theta = np.random.uniform(-0.1, 0.1)  # Small initial angle deviation
@@ -37,9 +39,10 @@ class CarLaneTrackingEnv(gym.Env):
         car_speed = 10.0  # Constant speed of 20 m/s
         distance_from_lane = np.random.uniform(-1.0, 1.0)  # Initial distance from lane (e.g., -1 to 1 meter)
         
-        self.state = np.array([theta, theta_dot, car_speed, distance_from_lane], dtype=np.float32)
+        self.state =    np.array([theta, theta_dot, car_speed, distance_from_lane], dtype=np.float32)
+        return_state  = np.array([theta, theta_dot, car_speed/self.speedNormalizeFactor , distance_from_lane], dtype=np.float32)
         self._init_plot()
-        return self.state
+        return return_state
     
     def SpeedUpdate(self,new_speed):
         self.state[2] = new_speed
@@ -51,8 +54,9 @@ class CarLaneTrackingEnv(gym.Env):
         self.wheel_range = action[0]
         
         # Update lane curvature randomly to simulate curves
-        self.lane_curvature += np.random.uniform(-0.01, 0.01)
-        self.lane_curvature = np.clip(self.lane_curvature, -0.05, 0.05)  # Limit the curvature to a small range
+        if(self.enable_lane_curvature):
+            self.lane_curvature += np.random.uniform(-0.01, 0.01)
+            self.lane_curvature = np.clip(self.lane_curvature, -0.05, 0.05)  # Limit the curvature to a small range
         
         # Simplified car dynamics
         # Update theta_dot based on wheel input and lane curvature
@@ -69,14 +73,14 @@ class CarLaneTrackingEnv(gym.Env):
         
         # Update state
         self.state = np.array([theta, theta_dot, car_speed, distance_from_lane], dtype=np.float32)
-        
+        return_state  = np.array([theta, theta_dot, car_speed/self.speedNormalizeFactor , distance_from_lane], dtype=np.float32)
         # Example reward: Penalize deviation from lane and large theta
         reward = -np.abs(distance_from_lane) - np.abs(theta)*3
         
         # Example done condition: Episode ends if car speed is 0 (in case of more advanced modeling)
         done = np.abs(distance_from_lane) > 1
         
-        return self.state, reward, done, {}
+        return return_state, reward, done, {}
     
     def render(self, mode='human'):
         theta, theta_dot, car_speed, distance_from_lane = self.state
@@ -85,7 +89,7 @@ class CarLaneTrackingEnv(gym.Env):
         self.ax.clear()
         
         # Draw lane with a curve based on the current lane curvature
-        lane_y = np.linspace(-25, 25, 100)
+        lane_y = np.linspace(-30, 30, 100)
         lane_x = self.lane_curvature * (lane_y**2)  # Quadratic curve for lane
         
         self.ax.plot(lane_x, lane_y, 'k--')  # Dashed line for lane center
@@ -106,8 +110,8 @@ class CarLaneTrackingEnv(gym.Env):
         self.ax.add_patch(car)
         
         # Set plot limits and labels
-        self.ax.set_xlim(-25, 25)
-        self.ax.set_ylim(-25, 25)
+        self.ax.set_xlim(-30, 30)
+        self.ax.set_ylim(-30, 30)
         self.ax.set_xlabel('Car Position')
         self.ax.set_ylabel('Distance from Lane Center (m)')
         
