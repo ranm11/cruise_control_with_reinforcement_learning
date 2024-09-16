@@ -13,7 +13,7 @@ from lane_gym import CarLaneTrackingEnv
 from replay_buffer import Buffer
 from DDPG_network import DDPG_network
 enable_lane_curvature = True
-speed_update_enable = False
+speed_update_enable = True
 env = CarLaneTrackingEnv(enable_lane_curvature)
 
 num_states = env.observation_space.shape[0]
